@@ -1,0 +1,660 @@
+#include <stdio.h>
+#include <io.h>
+#include <conio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <math.h>
+#include <time.h>
+#include <app.h>
+#include <vcsyse.h>
+#include <oracle.h>
+
+EXEC ORACLE OPTION (ORACA = YES);
+
+#define  PAYMAIN 1
+#define  REPFILE "C:\\REPORT.LST"
+
+time_t   tstart, tend;    /* For difftime         */
+size_t   HH,MM,SS;
+
+static void newblip(void);
+static int  panel01(void);
+
+int  getche (void);
+static int  Info01 (float );
+
+/* ---------------------------------------------------------------------------
+   Host - пеpеменные
+-----------------------------------------------------------------------------*/
+
+EXEC SQL BEGIN DECLARE SECTION;
+     VARCHAR uid [30];
+     VARCHAR pwd [30];
+     char    dbuser [30];
+     char    *curdate  = "01-JAN-98";
+     char    *datemin  = "01-JAN-98";
+     char    *edatemin = "01/01/98";
+     char    *datemax  = "31-JAN-98";
+     char    *ecurdate = "01/01/98";
+     long    empNum;
+     int     flag;
+     double  pens,sumt1,szpl,szplmax,snez_t,snez_p,staxp_m,staxp_f,scor1,scor0;
+     double  sgpd,sbol,sblfss,st_zpl,st_gpd,st_bl,st_blfss,stag,sbolm,sblfssm;
+     long    factmonr;
+     int    yearf,monthf;
+     int     rec_pft;
+     long    yeardsch,monthdsch;
+     char    dschdate[10];
+     int     month;
+     int     year;
+     int     pay;
+     long    emp;
+     long    empmin,empmax;
+
+EXEC SQL END DECLARE SECTION;
+
+  /* Общие пеpеменные                                                       */
+  unsigned int  ret, wnd;
+  int      i, j, j5,yy;
+  long     empInd=0;
+  int      panelflag  = 0;      /* Флажок панели для ввода паpаметpов         */
+  int      calcflag  = 0;       /* Флажoк записи выходной табулягpаммы        */
+  int      logonFlag  = 0;      /* Флажoк записи выходной табулягpаммы              */
+  int      flagExit  = 0;       /* Флажoк для выхода из цикла по оконч.чтения курсора  */
+  FILE    *report;
+  char     msg[80];
+  double   sumMax;              /* "Сумма начисл." по коду     */
+
+
+/*******************************************************
+*                                                       *
+*  Заполнение таблицы PAYRECJUR до расчета удержаний    *
+*       в пенсионный фонд с юр.лица                     *
+*  Результаты pасчета:                                  *
+*           формирование записей таблицы PAYRECJUR      *
+*                                                       *
+********************************************************/
+
+int main (int   cnt,       /* cnt     - счетчик параметров командной строки */
+    char  *args[])         /* args[i] - указатель на значение i-го параметра*/
+
+{
+
+  oraca.orastxtf = 3;                 /* Уpовень диагностики ошибок         */
+
+  if ((report = fopen( REPFILE, "w+t")) == NULL){
+       gotoxy(24,0);
+       printf("%c%c[1;37;41mОшибка пpи откpытии файла отчета. Аваpийный выход\n",0x07,0x1b);
+       getche();
+       return(0);
+  }
+
+  /* Обpаботка паpаметpов командной стpоки */
+  if (cnt != 2) return(0);
+  strcpy(uid.arr,args[1]);
+  uid.len  = strlen(uid.arr);
+
+/* ---------------------------------------------------------------------------
+ Logon to ORACLE, and open the cursors. The program exits if any errors occur.
+----------------------------------------------------------------------------*/
+
+  EXEC SQL CONNECT :uid;
+
+  if (sqlca.sqlcode){
+     gotoxy(24,0);
+     printf("%c%c[1;37;41mORA%i. Ошибка пpи подключении к БД. Нажмите любую клавишу.                  ",0x07,0x1b,sqlca.sqlcode);
+     getche();
+     return(0);
+  }
+
+  EXEC SQL WHENEVER SQLERROR GOTO errexit;
+  gotoxy(22,65); printf("FreeMem = %3iK",(int)(freemem()/1000));
+
+  printf("%c[1;33;44m",0x1B);                        /* Желтый на синем     */
+ 
+/* ---------------------------------------------------------------------------
+     Опеpатоpы запpосов
+--------------------------------------------------------------------------- */
+
+  EXEC SQL DECLARE C1 CURSOR FOR
+       SELECT DISTINCT PAYSUM.EMP#
+       FROM   PAYSUM
+       WHERE  MONTH = :month AND
+              YEAR  = :year  AND
+              PAYSUM.EMP# BETWEEN  :empmin AND :empmax AND
+              (PAYSUM.PAY# < 300 OR PAY# IN(328,430,431,432,632,540,541,542,633))
+       ORDER  BY PAYSUM.EMP#;
+
+
+  EXEC SQL DECLARE C2 CURSOR FOR
+       SELECT DISTINCT PAYSUM.FACTMON,PAYSUM.EMP#
+            FROM   PAYSUM,PAYTBL                    
+            WHERE  MONTH = :month AND YEAR = :year AND
+                   FACTMON != ( :year * 100 + :month ) AND   
+                   FACTMON>201012 AND
+	           EMP# BETWEEN :empmin AND :empmax AND
+                   PAYSUM.PAY# < 300 AND            
+                   PAYSUM.PAY# =PAYTBL.PAY# AND
+                   (NVL(BUDGTAX7,' ') ='*' or NVL(BUDGTAX9,' ') ='*' )
+                 ORDER  BY PAYSUM.FACTMON,PAYSUM.EMP#; 
+
+
+
+/* -----------------------------------------------------------------------------
+     Тело программы
+--------------------------------------------------------------------------- */
+
+  printf("%c[1;33;44m",0x1B);                        /* Желтый на синем     */
+  if ((report = fopen(REPFILE, "w+t")) == NULL) return(1);
+  fprintf(report,"%cP%cx%c%c0\n",0x1b,0x1b,0x00,0x1b);
+  /* Внешний цикл запpоса. Панель паpаметpов                                */
+
+  for (; ;){
+     empInd  = 0L;
+
+     if (!panel01()){                 /* Запpос паpаметpов pасчета          */
+        fprintf(report,"%c2",0x1b);
+        CURSON;
+        printf("%c[1;33;40m",0x1b);
+                                /* Ноpмальное завеpшение pаботы       */
+                                /* пpогpаммы. (По ESC - коду)         */
+
+        EXEC SQL COMMIT WORK RELEASE;
+        fcloseall();
+                                /* Вывод отчета                       */
+
+        sprintf(msg,"LIST %s", REPFILE);
+        if (calcflag) system(msg);
+                                /* Выход из пpогpаммы                 */
+        return(0);
+     }
+     calcflag = 1;
+     time( &tstart );       /* Use time and difftime for timing to seconds  */
+     Info01(0.0f);
+     empNum = 0L;               /* empNum -  число табельных номеров  */
+                                /*             для pасчета          */
+//      gotoxy(5,35);  printf("1 часть");
+     newblip();
+     strcpy(dbuser,strlenset(dbuserSet(),30));
+
+     if(empmin==0) empmin=1;
+     if(empmax==0) empmax=99999;
+
+    if(year>=2000) yy=year-2000;
+    else yy=year-1999;
+    sprintf(datemin,"01-%.3s-%.2i",monthname(month,2),yy);
+    sumMax=sysindex(541,datemin);
+
+//    fprintf(report,"DATE = %s  SUMMAX = %7.2f\n",datemin,sumMax);
+
+
+     EXEC SQL SELECT COUNT(DISTINCT PAYSUM.EMP#)
+              INTO   :empNum
+       FROM   PAYSUM
+       WHERE  MONTH = :month AND
+              YEAR  = :year  AND
+              PAYSUM.EMP# BETWEEN  :empmin AND :empmax AND
+              (PAYSUM.PAY# < 300 OR PAY# IN(328,430,431,432,632,540,541,542,633));
+
+      if (!empNum) continue;
+     gotoxy(7,48);  printf("│%0.6lu",empNum);
+
+     newblip();
+     empInd=0L;
+
+     newblip();
+
+     EXEC SQL OPEN C1;
+     i=0;
+     flagExit = 0;
+
+     for (empInd=0L; empInd <= empNum ; empInd++){
+         emp=0;
+         newblip();
+         EXEC SQL FETCH C1 INTO  :emp;
+         if(sqlca.sqlcode)break;
+
+         Info01(100.0f*((float)empInd/(float)empNum));
+
+         gotoxy(7,42);  printf("%0.6lu",empInd);
+         gotoxy(8,43);  printf("%0.5u",emp);
+         newblip();
+/*
+       yeardsch=monthdsch=0;
+       empty(dschdate,9);
+       EXEC SQL SELECT NVL(TO_NUMBER(TO_CHAR(DSCHDATE-1,'YYYY')),2999),
+               NVL(TO_NUMBER(TO_CHAR(DSCHDATE-1,'MM')),12),
+               NVL(to_char(DSCHDATE),'*')
+        INTO :yeardsch, :monthdsch, :dschdate
+        FROM EMPLOY
+        WHERE EMP# = :emp;
+
+*/
+//      fprintf(report,"dsch=%lu %lu %s\n",yeardsch,monthdsch,dschdate);
+
+      flag=0;
+      EXEC SQL SELECT DECODE(INVAL,NULL,0,'*',1) INTO :flag
+             FROM EMPLOY
+             WHERE EMP# = :emp;
+
+      sumt1=0.0;
+          EXEC SQL SELECT SUM(NVL(P.SUM,0)) INTO :sumt1                        
+            FROM   PAYSUM P,PAYTBL PT
+            WHERE  P.EMP# = :emp AND
+                   P.MONTH = :month AND
+                   P.YEAR = :year AND
+                   P.PAY# < 300 AND            
+                   P.PAY# =PT.PAY# AND     
+                 ( NVL(BUDGTAX8,' ') ='*' or NVL(BUDGTAX0,' ') ='*' or
+                   NVL(BUDGTAX7,' ') ='*' or NVL(BUDGTAX9,' ') ='*' );
+
+      szpl=0.0;
+       EXEC SQL SELECT SUM(NVL(P.SUM,0)) INTO :szpl                        
+                FROM PAYSUM P,PAYTBL PT
+               WHERE P.EMP# = :emp AND
+                     P.PAY# < 300 AND 
+                   P.MONTH = :month AND
+                   P.YEAR = :year AND
+                     P.PAY# =PT.PAY# AND     
+                     NVL(BUDGTAX8,' ') ='*';    
+
+      szplmax=0.0;
+      if(fabs(szpl)<=sumMax) szplmax=szpl;
+      else {  if (szpl<0.0 ) szplmax=-sumMax; 
+                        else szplmax=sumMax; }
+//      if (szpl<0.0 ) szplmax= szpl;
+
+
+       sgpd=0.0;
+        EXEC SQL SELECT SUM(NVL(SUM,0)) INTO :sgpd                        
+                 FROM   PAYSUM P,PAYTBL PT                  
+                 WHERE  P.MONTH = :month AND              
+                        P.YEAR = :year AND                
+                        P.EMP# = :emp AND                  
+                        P.PAY# < 300 AND           
+                        P.PAY# =PT.PAY# AND    
+                        NVL(BUDGTAX0,' ') ='*';          
+
+
+        sbol=0.0;
+        EXEC SQL  SELECT SUM(NVL(SUM,0)) INTO :sbol                         
+            FROM   PAYSUM P,PAYTBL PT                    
+            WHERE  FACTMON = ( :year * 100 + :month ) AND
+                   EMP# = :emp AND               
+                   P.PAY# < 300 AND            
+                   P.PAY# =PT.PAY# AND     
+                   NVL(BUDGTAX7,' ') ='*';           
+
+
+
+        sblfss=0.0;                                              
+        EXEC SQL SELECT SUM(NVL(SUM,0)) INTO :sblfss                               
+               FROM   PAYSUM P,PAYTBL PT                          
+               WHERE  FACTMON = ( :year * 100 + :month ) AND 
+                      EMP# = :emp AND                         
+                      P.PAY# < 300 AND                  
+                      P.PAY# =PT.PAY# AND           
+                      NVL(BUDGTAX9,' ') ='*';                 
+//февраль 2011 
+
+        sbolm=0.0;
+        EXEC SQL    SELECT SUM(NVL(SUM,0)) INTO :sbolm                          
+            FROM   PAYSUM P,PAYTBL PT                    
+            WHERE  YEAR= :year AND MONTH= :month AND
+                   EMP# = :emp AND               
+                   P.PAY# < 300 AND            
+                   P.PAY# =PT.PAY# AND     
+                   NVL(BUDGTAX7,' ') ='*';           
+
+
+
+        sblfssm =0.0;
+        EXEC SQL   SELECT SUM(NVL(SUM,0)) INTO :sblfssm                        
+            FROM   PAYSUM P,PAYTBL PT                    
+            WHERE  YEAR=:year AND MONTH= :month AND
+                   EMP# = :emp AND               
+                   P.PAY# < 300 AND            
+                   P.PAY# =PT.PAY# AND     
+                   NVL(BUDGTAX9,' ') ='*' ;          
+
+//февраль 2011 
+
+
+
+        st_zpl=0.0;
+        EXEC SQL SELECT SUM(NVL(SUM,0)) INTO :st_zpl
+                 FROM   PAYSUM
+                 WHERE  FACTMON = (:year * 100 + :month ) AND
+	                EMP# = :emp AND
+  	                PAY# in ( 328,430,540 ); 
+
+       st_gpd=0.0;
+       EXEC SQL SELECT SUM(NVL(SUM,0)) INTO :st_gpd
+                FROM   PAYSUM
+                WHERE  FACTMON = (:year * 100 + :month ) AND
+                       EMP# = :emp AND
+  	               PAY# in ( 432,542 );
+
+
+       st_bl=0.0;
+       EXEC SQL SELECT SUM(NVL(SUM,0)) INTO :st_bl
+       FROM   PAYSUM
+       WHERE  FACTMON = (:year * 100 + :month ) AND
+	      EMP# = :emp AND
+  	      PAY# in ( 431,541 ) ;
+
+
+     
+       st_blfss=0.0;
+       EXEC SQL SELECT SUM(NVL(SUM,0)) INTO :st_blfss
+       FROM   PAYSUM
+       WHERE  FACTMON = (:year * 100 + :month ) AND
+	      EMP# = :emp AND
+  	      PAY# in ( 632,633 ); 
+
+
+       gotoxy(10,57);  printf("D");
+       newblip();
+       EXEC SQL DELETE FROM PFTSUMN WHERE EMP#=:emp AND MONTH=:month AND YEAR=:year;
+       gotoxy(10,57);  printf(" ");
+
+       gotoxy(10,57);  printf("I");
+       newblip();
+       EXEC SQL INSERT INTO PFTSUMN(EMP#,YEAR,MONTH,FLAGINV,SUMTAX1,SUMZPL,SUMZPLMAX,SUMGPD,SUMBOL,SUMBLFSS,STAX_ZPL,STAX_GPD,STAX_BL,STAX_BLFSS,DBUSER,SUMBOLM,SUMBLFSSM)
+                            VALUES (:emp,:year,:month,:flag,:sumt1,:szpl,:szplmax,:sgpd,:sbol,:sblfss,:st_zpl,:st_gpd,:st_bl,:st_blfss,:dbuser,:sbolm,:sblfssm);
+       gotoxy(10,57);  printf(" ");
+
+
+       fprintf(report,"(1)emp=%lu year=%i month=%i flag=%i sumt1=%10.2f szpl=%10.2f szplmax=%10.2f sgpd=%10.2f sbol=%10.2f sblfss=%10.2f st_zpl=%10.2f st_gpd=%10.2f st_bl=%10.2f st_blfss=%10.2f sbolm=%10.2f sblfssm=%10.2f \n",
+                       emp,year,month,flag,sumt1,szpl,szplmax,sgpd,sbol,sblfss,st_zpl,st_gpd,st_bl,st_blfss,sbolm,sblfssm);
+
+
+       EXEC SQL COMMIT;
+     }
+
+     EXEC SQL CLOSE C1;
+
+
+
+//     gotoxy(5,35);  printf("2 часть");
+
+
+     Info01(0.0f);
+     empNum=0;
+     EXEC SQL SELECT COUNT(DISTINCT PAYSUM.FACTMON||'_'||PAYSUM.EMP#)
+              INTO   :empNum
+            FROM   PAYSUM,PAYTBL                    
+            WHERE  MONTH = :month AND YEAR = :year AND
+                   FACTMON != ( :year * 100 + :month ) AND   
+                   FACTMON>201012 AND
+	           EMP# BETWEEN :empmin AND :empmax AND
+                   PAYSUM.PAY# < 300 AND            
+                   PAYSUM.PAY# =PAYTBL.PAY# AND
+                   (NVL(BUDGTAX7,' ') ='*' or NVL(BUDGTAX9,' ') ='*' )  ;
+
+    
+     if (!empNum) continue;
+     gotoxy(7,48);  printf("│%0.6lu",empNum);
+     newblip();
+     empInd=0L;
+     newblip();
+     EXEC SQL OPEN C2;
+     i=0;
+     for (empInd=0L; empInd <= empNum ; empInd++){
+         emp=0;
+         factmonr=0L;
+         newblip();
+         EXEC SQL FETCH C2 INTO :factmonr,:emp;
+         if(sqlca.sqlcode)break;
+
+         Info01(100.0f*((float)empInd/(float)empNum));
+         gotoxy(7,42);  printf("%0.6lu",empInd);
+         gotoxy(8,43);  printf("%0.5u",emp);
+         newblip();
+ 
+
+        
+         yearf=0L;
+         monthf=0L;
+         EXEC SQL SELECT SUBSTR(:factmonr,1,4),substr(:factmonr,5,2)
+                    INTO :yearf,:monthf
+                    FROM DUAL;
+
+    if(yearf>=2000) yy=yearf-2000;
+    else yy=yearf-1999;
+    sprintf(datemin,"01-%.3s-%.2i",monthname(monthf,2),yy);
+    sumMax=sysindex(541,datemin);
+
+
+//         fprintf(report,"1=%lu %lu %i\n",yearf,monthf,factmonr);
+
+     if (yearf == 2010) continue;
+
+         flag=0;
+         sumt1=szpl=szplmax=sgpd=sbol=sblfss=st_zpl=st_gpd=st_bl=st_blfss=stag=scor1=scor0=sbolm=sblfssm=0.0;
+
+         rec_pft=0;
+         EXEC SQL SELECT COUNT(*) INTO :rec_pft FROM PFTSUMN
+                   WHERE EMP#=:emp
+                     AND YEAR=:yearf
+                     AND MONTH=:monthf;
+         if (rec_pft!=0) 
+         {
+         EXEC SQL SELECT NVL(FLAGINV,0),NVL(SUMTAX1,0),NVL(SUMZPL,0),NVL(SUMZPLMAX,0),
+                         NVL(SUMGPD,0),NVL(SUMBOL,0),NVL(SUMBLFSS,0),NVL(STAX_ZPL,0),
+                         NVL(STAX_GPD,0),NVL(STAX_BL,0),NVL(STAX_BLFSS,0),
+                         NVL(SUMCORR1,0),NVL(SUMCORR0,0),NVL(STAG,0),NVL(SUMBOLM,0),NVL(SUMBLFSSM,0)
+                  INTO   :flag,:sumt1,:szpl,:szplmax,:sgpd,:sbol,:sblfss,:st_zpl,
+                         :st_gpd,:st_bl,:st_blfss,:scor1,:scor0,:stag,:sbolm,:sblfssm 
+                  FROM   PFTSUMN
+                   WHERE EMP#=:emp
+                     AND YEAR=:yearf
+                     AND MONTH=:monthf;
+         }
+
+       if((year=yearf && monthf<month ) || (yearf<year));
+       else
+       {flag=0;
+       EXEC SQL SELECT DECODE(INVAL,NULL,0,'*',1) INTO :flag
+             FROM EMPLOY
+             WHERE EMP# = :emp;}
+
+
+       
+       szpl=0.0;
+       EXEC SQL SELECT SUM(NVL(P.SUM,0)) INTO :szpl                        
+                  FROM PAYSUM P,PAYTBL PT                    
+                 WHERE  P.EMP# = :emp AND           
+                        P.MONTH = :monthf AND  P.YEAR= :yearf AND  
+                        P.PAY# < 300 AND            
+                        P.PAY# =PT.PAY# AND     
+                        NVL(BUDGTAX8,' ') ='*'  ;         
+
+//            fprintf(report,"szpl = %10.2f fm = %6i\n", szpl,factmonr);
+
+      szplmax=0.0;
+      if(fabs(szpl)<=sumMax) szplmax=szpl;
+      else {  if (szpl<0.0 ) szplmax=-sumMax; 
+                        else szplmax=sumMax; }
+
+    
+       sbol=0.0;
+       EXEC SQL SELECT SUM(NVL(P.SUM,0)) INTO :sbol                         
+                  FROM PAYSUM P,PAYTBL PT                    
+                 WHERE P.FACTMON = :yearf*100+:monthf AND
+                       P.EMP# = :emp AND               
+                       P.PAY# < 300 AND            
+                       P.PAY# =PT.PAY# AND     
+                       NVL(BUDGTAX7,' ') ='*';           
+
+
+ //            fprintf(report,"sBOL =%f \n", sbol);  
+      sblfss=0.0; 
+      EXEC SQL SELECT SUM(NVL(P.SUM,0)) INTO :sblfss                         
+                 FROM  PAYSUM P ,PAYTBL PT                    
+                WHERE  P.FACTMON = :yearf*100+:monthf AND
+                       P.EMP# = :emp AND               
+                       P.PAY# < 300 AND            
+                       P.PAY# =PT.PAY# AND     
+                       NVL(BUDGTAX9,' ') ='*';           
+
+
+//             fprintf(report,"sBLFSS =%f \n", sblfss);
+     st_zpl=0.0;
+
+     EXEC SQL  SELECT SUM(NVL(SUM,0)) INTO :st_zpl
+                 FROM  PAYSUM
+                WHERE  FACTMON = :yearf*100+:monthf AND
+	               EMP# = :emp AND
+  	               PAY# in ( 328,430,540 ); 
+
+//              fprintf(report,"sT_ZPL =%f \n", st_zpl);
+
+       st_bl=0.0;
+       EXEC SQL SELECT SUM(NVL(SUM,0)) INTO :st_bl
+                  FROM   PAYSUM
+                 WHERE  FACTMON = :yearf*100+:monthf AND
+	                EMP# = :emp AND
+                	PAY# in ( 431,541 ); 
+
+
+//            fprintf(report,"sT_BL = %f \n", st_bl);     
+       st_blfss=0.0;
+       EXEC SQL SELECT SUM(NVL(SUM,0)) INTO :st_blfss
+       FROM   PAYSUM
+       WHERE  FACTMON = :yearf*100+:monthf AND
+	      EMP# = :emp AND
+  	      PAY# in ( 632,633 ); 
+
+
+       gotoxy(10,57);  printf("D");
+       newblip();
+       EXEC SQL DELETE FROM PFTSUMN WHERE EMP#=:emp AND MONTH=:monthf AND YEAR=:yearf;
+       gotoxy(10,57);  printf(" ");
+
+       gotoxy(10,57);  printf("I");
+       newblip();
+
+       EXEC SQL INSERT INTO PFTSUMN(EMP#,YEAR,MONTH,FLAGINV,SUMTAX1,SUMZPL,SUMZPLMAX,SUMGPD,SUMBOL,SUMBLFSS,STAX_ZPL,STAX_GPD,STAX_BL,STAX_BLFSS,SUMCORR1,SUMCORR0,STAG,DBUSER,SUMBOLM,SUMBLFSSM)
+                            VALUES (:emp,:yearf,:monthf,:flag,:sumt1,:szpl,:szplmax,:sgpd,:sbol,:sblfss,:st_zpl,:st_gpd,:st_bl,:st_blfss,:scor1,:scor0,:stag,:dbuser,:sbolm,:sblfssm);
+
+
+       fprintf(report,"(2)emp=%lu yearf=%i monthf=%i sumt1=%10.2f szpl=%10.2f szplmax=%10.2f sbol=%10.2f sblfss=%10.2f st_zpl=%10.2f st_bl=%10.2f st_blfss=%10.2f sbolm=%10.2f sblfssm=%10.2f \n",
+                       emp,yearf,monthf,sumt1,szpl,szplmax,sbol,sblfss,st_zpl,st_bl,st_blfss,sbolm,sblfssm);          
+
+       gotoxy(10,57);  printf(" ");
+
+       EXEC SQL COMMIT;
+
+     }
+
+     EXEC SQL CLOSE C2;
+
+
+     Info01(100.0f);
+  }
+/* --------------------------------------------------------------------------
+   Аваpийное завеpшение pаботы с базой данных
+----------------------------------------------------------------------------*/
+errexit:
+  dberror();
+  return(0);
+}
+
+static void  newblip(void) {
+
+static int i_blip =0,
+          mas_blip[5] = {'C', 'D', 'S', '·', '■'};
+
+   gotoxy(10,43); putchar(mas_blip[i_blip++]);
+   if (i_blip == 5)  i_blip = 0;
+}
+
+static int Info01(float num){
+  size_t   HH,MM,SS;
+  double dt;
+  time( &tend );
+  dt = difftime( tend, tstart );
+  HH = (size_t)(dt/3600.0);
+  MM = (size_t)((dt - HH*3600)/60.0);
+  SS = (size_t)(dt - 3600*HH - 60*MM);
+  gotoxy(6,42);  printf("%0.2u:%0.2u:%0.2u",HH,MM,SS);
+  gotoxy(12,12); printf("%-0.*s", (int)num/2,"██████████████████████████████████████████████████");
+  gotoxy(12,64); printf("%3.0u",(int)num);
+return(0);
+}
+
+static int panel01(){
+  char   buf[10];
+  int    statusWnd;
+  int    uskod = 0;
+
+  char *panel[9]={
+       "╒═════════════════════════════╤════════════════════════════╕",
+       "│        - Год                │ 00:00:00 - Вpемя pасчета   │",
+       "│        - Месяц              │ 000000/000000 - Обработано │",
+       "│                             │                 записей    │",
+       "│        - Таб.номер(min)     ├────────────────────────────┤",
+       "│          Таб.номер(max)     │ [ ] - Запpос  [ ] - Запись │",
+       "├─────────────────────────────┴────────────────────────────┤",
+       "│ ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░   ░░% │",
+       "╘══════════════════════════════════════════════════════════╛"
+       };
+
+  noblink();
+  if (panelflag == 0 ) {
+
+      vcstart(SAVESCRN);
+      CURSON;
+      VC_VIO = 1;
+      VCROW = 25;
+      VCCOL = 80;
+
+     /* Инициализация StatusLine                                               */
+     statusWnd = wxopen(24,00,24,79,NULL,ACTIVE+NOADJ,0,0);
+     setswdo(statusWnd);
+
+     /* Откpыть окно для запpоса паpаметpов pасчета                            */
+     if ((wnd = wxxopen(5,10,13,69,NULL,ACTIVE+NOADJ+CURSOR,0,0,8,-1)) == -1){
+        vcend(CLOSE);
+        return(0);
+     }
+
+     todate(sysdate(ecurdate), curdate);               /* Текущая дата */
+
+     year  = yearSet(atoi(strncpy(buf,ecurdate+6,2)));
+     month = atoi(strncpy(buf,ecurdate+3,2));
+     panelflag++;
+  }
+
+
+  for (i=0; i<9; i++) atsay(i,0,panel[i]);
+
+  xatgetc(1,4,(TEXT *)(&year),"9999",yeartest,
+         "Введите год pасчетного пеpиода",
+          NULL,113,31,-1,INTEGER+FLDBLANK,NULL);
+
+  xatgetc(2,6,(TEXT *)(&month),"99",montest,
+         "Введите номеp месяца pасчетного пеpиода",
+          NULL,113,31,-1,INTEGER+FLDBLANK,NULL);
+
+  xatgetc(4,3,(TEXT *)(&empmin),"99999",NULL,
+         "Введите табельный номер (0-по всем)",
+          NULL,113,31,-1,LONGINT+FLDBLANK,NULL);
+
+  xatgetc(5,3,(TEXT *)(&empmax),"99999",NULL,
+         "Введите табельный номер (0-по всем)",
+          NULL,113,31,-1,LONGINT+FLDBLANK,NULL);
+
+  ret = readgets();
+
+  if (ret == ESC){
+     vcend(CLOSE);
+     return(0);
+  }
+
+  statsay("Ждите, идет pасчет платежной ведомости. Для пpеpывания введите <ESC>.",DEFAULT);
+
+  CURSOFF;
+  return(1);
+}

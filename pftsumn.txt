@@ -1,0 +1,1150 @@
+
+     pftsumn.txt
+
+     январь 2011 г.
+     февраль 2011 г.
+     май 2011 г.
+     январь 2012 г. 
+     ноябрь 2012 г.
+     сентябрь 2013 г.
+     август 2014 г.
+     сентябрь 2017 г.
+
+
+
+             ПОДГОТОВКА К ПЕРЕРАСЧЕТУ УДЕРЖАНИЯ ЕДИНОГО ВЗНОСА НА
+             ОБЩЕОБЯЗАТЕЛЬНОЕ ГОСУДАРСТВЕННОЕ СОЦИАЛЬНОЕ СТРАХОВАНИЕ. 
+             --------------------------------------------------------
+
+    Основание : введение в действие с 01.01.2011 г. постановления правления ПФУ 
+    "Порядок формування та подання страхувальниками звiту щодо сум нарахованого 
+    Єдиного внеску на загальнообов"язкове державне соцiальне страхування "
+    от 08.10.2010 г. N 22-2.
+
+  ----------------------------------------------------------------
+    В ноябре 2012 г. :
+    Основание :
+    служебная записка ГБ N 4017-894 от 27.09.2012 г.
+ 
+    Согласно действующего законодательства для формирования персонифицированного
+    отчета в ПФУ необходимо учитывать:
+     - если начисление зарплаты производится за предыдущий период и оно не связано
+       с начислением помощи по временной нетрудоспособности за предыдущий период,
+       то суммы зарплаты за предыдущий период включаются в тот месяц, в котором были
+       начислены ;
+     - если начисление зарплаты производится за предыдущий период как сторнировка
+       в связи с начислением
+       помощи по временной нетрудоспособности за предыдущий период, то суммы зарплаты 
+       за предыдущий период в отчете отражаются с указанием того периода, за который
+       были начислены.
+  ----------------------------------------------------------------
+     В июле 2013 г. :
+     Основание :
+     служебная записка ГБ N 4017-772 от 24.07.2013 г.
+     С июля 2013 г. декретные больничные листы облагаются единым социальным взносом.
+  -------------------------------------------------------------------
+
+
+              СОЗДАНИЕ ТАБЛИЦЫ PFTSUMN - "НАЧИСЛЕННАЯ ЗАРПЛАТА , БОЛЬНИЧНЫЕ
+              И УДЕРЖАННЫЕ ВЗНОСЫ ДЛЯ ОБЩЕОБЯЗАТЕЛЬНОГО ГОСУДАРСТВЕННОГО 
+              СОЦИАЛЬНОГО СТРАХОВАНИЯ".
+              --------------------------------------------------------------
+
+       Структура таблицы :
+
+       EMP#            number(5)      not null  /*   табельный номер   */
+       YEAR            number(4)      not null  /*   год     */
+       MONTH           number(2)      not null  /*   месяц   */
+       FLAGINV         number(1)                /*   флаг инвалидности */
+       SUMTAX1         number(18,2)             /*   Общая сумма для социального 
+                                                     страхования (без огранич.,     
+                                                     без перестановки)  */
+                                                     
+       SUMZPL          number(18,2)             /*   Сумма "зарплата+отпускные" по MONTH   */
+
+       SUMZPLMAX       number(18,2)             /*   Сумма "зарплата + отпускные" по MONTH ,
+                                                     ограниченная MAX величиной  */
+
+       SUMGPD          number(18,2)             /*   Сумма "зарплата по ГПД" по MONTH  */
+
+
+       SUMBOL          number(18,2)             /*   Сумма "больничные за счет предприятия + 
+                                                     больничные (произв.травмы)
+                                                     по FACTMON  этого месяца,года  */
+
+       SUMBLFSS        number(18,2)             /*   Сумма "больничные за счет ФСС" 
+                                                     по FACTMON  этого месяца,года  */
+
+       STAX_ZPL        number(18,2)             /*   Сумма социального удержания с зарплаты и отпускных 
+                                                     по FACTMON (расчет + перерасчет)  */
+
+       STAX_GPD        number(18,2)             /*   Сумма социального удержания с зарплаты по ГПД  
+                                                     по FACTMON (расчет + перерасчет)  */
+
+       STAX_BL         number(18,2)             /*   Сумма социального удержания с больничн.за счет 
+                                                     предприятия и больничн.(произв.травмы)
+                                                     по FACTMON (расчет + перерасчет)  */
+
+       STAX_BLFSS      number(18,2)             /*   Сумма социального удержания больничн. за счет 
+                                                     ФСС по FACTMON (расчет + перерасчет)  */
+
+       SUMCORR1        number(18,2)             /*   Сумма корректировки из-за изменения таблицы входимости
+                                                     (добавилась входимость) по FACTMON  */
+
+       SUMCORR0        number(18,2)             /*   Сумма корректировки из-за изменения таблицы входимости
+                                                     (не стало входимости) по FACTMON  */
+
+       STAG            number(1)                /*   признак наличия спецстажа  (1-есть спецстаж)  */               
+
+
+       DBUSER          char(30)                 /*   ДД/ММ/ГГ ЧЧ:ММ пользователь  */
+
+     ------------------------------------------------------------------------------
+       добавили в феврале 2011 г.
+
+       SUMBOLM         number(18,2)             /*   Сумма "больничные за счет предприятия + 
+                                                     больничные (произв.травмы)", начисленные 
+                                                     по MONTH  */
+
+       SUMBLFSSM       number(18,2)             /*   Сумма "больничные за счет ФСС", начисленные 
+                                                     по MONTH  */
+     ------------------------------------------------------------------------------
+
+ !!    добавили в ноябре 2012 г.
+
+       FLAGCHANGE      number(1)                /*   признак изменения записи (для использования таблицы
+                                                     PFTSUMN в программе расчета стажа)
+                                                     0 - новая запись
+                                                     1 - корректировка записи (или запись добавилась
+                                                         за прошлый период )  */
+
+     ------------------------------------------------------------------------------
+
+   Создать индекс 1 по EMP#.
+   Создать индекс 2 по YEAR и MONTH.
+
+   Схема: SALARY_S.
+
+   Размеры таблицы:
+   ----------------
+   До 120000 записей в год.
+   Срок хранения - 5 лет.
+
+   Доступ к таблице:
+   -----------------
+   Группа ИВЦ (PAYIVC): доступ на SELECT,INSERT,DELETE,UPDATE
+
+
+            Панель для формирования таблицы PFTSUMN :
+
+   ┌──────────────────────────┬────────────────────────────┐
+   │  ▐▐▐▐ - Год              │  00:00:00  - Время расчета │
+   │    ▐▐ - Месяц            │                            │
+   │ ▐▐▐▐▐ - Таб.номер (min)  │                            │
+   │ ▐▐▐▐▐ - Таб.номер (max)  │                            │
+   ├──────────────────────────┴────────────────────────────│
+   │||||||||||||||||||||||||||||||||||||||||||||   ||||| % │
+   └───────────────────────────────────────────────────────┘
+
+ Год автоматически сделать равным году из системной даты - 1 месяц.
+ Предоставить возможность корректировки.
+
+ Месяц автоматически сделать равным месяцу из системной даты - 1 месяц.
+ Предоставить возможность корректировки.
+
+ Таб.номер (min) автоматически сделать равным 1.
+ Предоставить возможность корректировки.
+
+ Таб.номер (max) автоматически сделать равным 99999.
+ Предоставить возможность корректировки.
+
+ Необходимо предусмотреть возможность прерывания расчета по Ecs или по Ctrl/Break.
+
+ Обозначим информацию, вводимую в панели:
+ Год    = YEARR
+ Месяц  = MONTHR
+ Таб.номер (min)   = EMPMIN
+ Таб.номер (max)   = EMPMAX
+
+
+      I. ЗАПОЛНЕНИЕ ТАБЛИЦЫ ПО РАСЧЕТНОМУ МЕСЯЦУ.
+         -----------------------------------------
+
+  Основной запрос :
+
+       SELECT DISTINCT EMP#
+       FROM   PAYSUM
+       WHERE  MONTH = MONTHR AND
+	      YEAR  = YEARR  AND
+	      EMP# BETWEEN EMPMIN AND EMPMAX AND
+  	      ( PAY# < 300      
+                OR PAY# in ( 328,430,431,432,632,540,541,542,633   ,329 ) ) 
+              ORDER  BY EMP# 
+
+  ------------------------------------------------------------------------
+   31 мая 2011 г.
+   В апреле 2011 заменили вид удерж. 328 на 329- удержание ЕСВ со стороны
+
+   (сл.зап. Главной бухгалтерии N 4017-361 от 07.04.2011 г.)
+  ------------------------------------------------------------------------
+
+
+ Для YEARR,MONTHR определим максимальную величину, на которую начисляется
+ удержание в ПФ.  Обозначим ее SumMax.
+
+ Для определения SumMax выбрать значение NVAL из справочника SYSINDEX c
+ IND# = 541 при условии,что 1-е  число  введенного пользователем года,
+ месяца >= максимально возможного значения  поля INDATE.
+
+ -------------------
+ сентябрь 2017 г.
+
+ Для YEARR,MONTHR определим значение минимальной зарплаты согласно законодательству.
+ Обозначим ее ZplMin.
+
+ Для определения ZplMin выбрать значение NVAL из справочника SYSINDEX c
+ IND# = 3 при условии,что 1-е  число  введенного пользователем года,
+ месяца >= максимально возможного значения  поля INDATE.
+
+     select nval from sysindex
+     where ind#=3  and indate= (select  max(indate) from sysindex
+               where ind#=3 and to_date('01/'|| MONTH ||'/'||YEARR,
+               'dd/mm/yyyy')>=indate) ;
+
+ --------------------
+
+
+
+    Проходим по всем выбранным таб.номерам.
+
+    Обозначим : EMP - обрабатываемый таб.номер.
+
+
+   1.  Определим необходимые нам переменные для заполнения полей .
+
+       FLAG     -  флаг инвалидности.
+       SUMT1    -  сумма,облагаемая удерж. в ПФ с юр.лица.
+       SZPL     -  сумма "зарплата+отпускные" без огранич. по MONTH 
+       SZPLMAX  -  сумма "зарплата+отпускные" с ограничением по MONTH
+       SGPD     -  сумма "зарплата по ГПД" по MONTH без огранич.
+       SBOL     -  сумма  больничных за счет предприятия+больничн.(произв.травмы)
+                   по FACTMON без огранич.
+       SBLFSS   -  сумма  больничных за счет ФСС по FACTMON без огранич.
+       ST_ZPL   -  сумма соц.удержания с зарплаты и отпускных по FACTMON. 
+       ST_GPD   -  сумма соц.удержания с зарплаты по ГПД по FACTMON. 
+       ST_BL    -  сумма соц.удержания с больничных за счет предприятия
+                   и больничн.(произв.травмы) по FACTMON. 
+       ST_BLFSS -  сумма соц.удержания с больничных за счет ФСС по FACTMON.  
+       SCOR1    -  сумма корректировки по изменению таблицы входимости.
+       SKOR0    -  сумма корректировки по изменению таблицы входимости. 
+     ------------------------------------------------------------------------------
+       добавили в феврале 2011 г.
+
+       SBOLM    -  сумма  больничных за счет предприятия+больничн.(произв.травмы)
+                   по MONTH без огранич.
+       SBLFSSM  -  сумма  больничных за счет ФСС по MONTH без огранич.
+
+     ------------------------------------------------------------------------------
+ !!    добавили в ноябре 2012 г.
+
+       FLAGCHANGE - признак изменения записи.
+
+     ------------------------------------------------------------------------------
+
+
+       Присвоим начальное значение всем переменным  0.
+                                        
+   2. Заполнение полей таблицы PFTSUMN.
+
+
+      FLAG.
+
+            SELECT NVL(INVAL,' ') FROM EMPLOY E
+            WHERE E.EMP# = EMP
+
+            Если NVL(INVAL,' ') = '*'  FLAG = 1 
+
+      SUMT1.
+
+            SELECT SUM(SUM)                         
+            FROM   PAYSUM,PAYTBL                    
+            WHERE  MONTH = MONTHR AND
+                   YEAR = YEARR AND
+                   EMP# = EMP AND               
+                   PAYSUM.PAY# < 300 AND            
+                   PAYSUM.PAY# =PAYTBL.PAY# AND     
+                 ( NVL(BUDGTAX8,' ') ='*' or NVL(BUDGTAX0,' ') ='*' or
+                   NVL(BUDGTAX7,' ') ='*' or NVL(BUDGTAX9,' ') ='*' )
+
+  -------------------------------------
+
+       С июля 2013 г. проверку  
+
+    ( NVL(BUDGTAX8,' ') ='*' or NVL(BUDGTAX0,' ') ='*' or
+      NVL(BUDGTAX7,' ') ='*' or NVL(BUDGTAX9,' ') ='*' )
+
+       заменим на :
+
+    ( NVL(BUDGTAX8,' ') ='*' or NVL(BUDGTAX0,' ') ='*' or
+      NVL(BUDGTAX7,' ') ='*' or
+    ( NVL(BUDGTAX9,' ') ='*' and PAYSUM.PAY# not in (245,246,247) ) OR
+    ( PAYSUM.PAY# in (245,246,247) and  ( YEAR * 100 + MONTH ) >= 201307 and
+      FACTMON >= 201307  )  )
+
+  -------------------------------------
+
+
+      SZPL.
+ -------------------------
+ ------------------------- Было до ноября 2012 г.
+
+  Было до января 2012 г.
+
+
+            SELECT SUM(SUM)                         
+            FROM   PAYSUM,PAYTBL                    
+            WHERE  EMP# = EMP AND               
+                   PAYSUM.PAY# < 300 AND            
+                   MONTH = MONTHR AND                      
+                   YEAR = YEARR AND     
+                   PAYSUM.PAY# =PAYTBL.PAY# AND     
+                   NVL(BUDGTAX8,' ') ='*' 
+
+  Стало с января 2012 г.
+  -----------------------
+  Не включаем в зарплату текущего месяца суммы с FACTMON другого месяца.
+  Они переставляются в тот месяц, за который были начислены.
+  В дальнейшем будет перерасчет по зарплате (БУЗПиД даст служеб.записку).
+
+            SELECT SUM(SUM)                         
+            FROM   PAYSUM,PAYTBL                    
+            WHERE  EMP# = EMP AND               
+                   PAYSUM.PAY# < 300 AND            
+                   MONTH = MONTHR AND                      
+                   YEAR = YEARR AND     
+                   PAYSUM.PAY# =PAYTBL.PAY# AND     
+                   NVL(BUDGTAX8,' ') ='*'  AND
+
+                   FACTMON = ( YEARR * 100 + MONTHR )  
+
+
+ -------------------------
+ ------------------------- Стало с ноября 2012 г.
+
+  SUMZP1 = 0  - сумма зарплаты (в т.ч. отпускные), начисленная в расчетном месяце
+                за расчетный месяц или начисленная за расчетный месяц 
+                в других периодах до ноября 2012 г.
+
+  SUMZP2 = 0  - сумма зарплаты (без отпускных), начисленная в расчетном месяце за
+                другой период, но отражается в отчетности для ПФ с датой расчетного
+                месяца.
+
+            SELECT SUM(SUM)       into  SUMZP1                        
+            FROM   PAYSUM,PAYTBL                    
+            WHERE  EMP# = EMP AND               
+                   PAYSUM.PAY# < 300 AND
+                   PAYSUM.PAY# =PAYTBL.PAY# AND     
+                   NVL(BUDGTAX8,' ') ='*'  AND
+                   FACTMON = ( YEARR * 100 + MONTHR )  AND  (
+                   MONTH = MONTHR AND YEAR = YEARR ) OR             
+                   ( ( YEAR * 100 + MONTH ) < 201211 )  )        
+  - - - - 
+
+  Вычислим SUMZP2.
+
+  Выберем из MANSUM зарплату (без отпускных) , начисленную за периоды,
+  не совпадающие с расчетным. 
+
+  Запрос 1.
+       SELECT DISTINCT FACTMON
+       FROM   MANSUM , PAYTBL
+       WHERE  EMP# = EMP AND
+              MONTH = MONTHR AND
+	      YEAR  = YEARR  AND
+	      FACTMON !=( YEARR*100 + MONTHR )
+  	      MANSUM.PAY# < 300 AND
+  	      MANSUM.PAY# = PAYTBL.PAY# AND
+  	      NVL(BUDGTAX8,' ') ='*' AND
+              MANSUM.PAY# NOT IN
+                  ( SELECT TBL# FROM SYSTBL WHERE TBLID ='PF_T7_K3' )     
+              ORDER  BY EMP# , FACTMON 
+
+    1. Если выборка пустая, то переход на 5.
+       Иначе
+
+    2. Проходим по очередному FACTMON из запроса 1.
+       Если закончился список выбранных FACTMON, то переход на п.5.
+       Иначе :
+
+    3. Обозначим :
+       FACTMONR - обрабатываемый FACTMON.
+       SUMZPF - зарплата (кроме отпускных) по FACTMONR.
+       SUMBLF - больничные по FACTMONR.
+       Начальные значения SUMZPF = 0 , SUMBLF = 0.
+
+  Запрос 2.
+       SELECT SUM(SUM) into SUMZPF 
+       FROM   MANSUM , PAYTBL
+       WHERE  EMP# = EMP AND
+              MONTH = MONTHR AND
+	      YEAR  = YEARR  AND
+	      FACTMON = FACTMONR AND 
+  	      MANSUM.PAY# < 300 AND
+  	      MANSUM.PAY# = PAYTBL.PAY# AND
+  	      NVL(BUDGTAX8,' ') ='*' AND
+              MANSUM.PAY# NOT IN
+                  ( SELECT TBL# FROM SYSTBL WHERE TBLID ='PF_T7_K3' )     
+
+  Запрос 3.
+       SELECT SUM(SUM) into SUMBLF 
+       FROM   PAYSUM , PAYTBL
+       WHERE  EMP# = EMP AND 
+              MONTH = MONTHR AND
+	      YEAR  = YEARR  AND
+	      FACTMON = FACTMONR AND
+  	      PAYSUM.PAY# = PAYTBL.PAY# AND
+  	      ( NVL(BUDGTAX7,' ') ='*' OR NVL(BUDGTAX9,' ') ='*' ) 
+
+  -------------------------------------
+
+       С июля 2013 г. проверку  
+
+    (  NVL(BUDGTAX7,' ') ='*' or NVL(BUDGTAX9,' ') ='*' )
+
+       заменим на :
+
+   (   NVL(BUDGTAX7,' ') ='*' or
+    ( NVL(BUDGTAX9,' ') ='*' and PAYSUM.PAY# not in (245,246,247) ) OR
+    ( PAYSUM.PAY# in (245,246,247) and  ( YEAR * 100 + MONTH ) >= 201307 and
+      FACTMON >= 201307  )  )
+
+  -------------------------------------
+
+
+       Если ( nvl(SUMZPF,0) = 0 или nvl(SUMBLF,0) = 0 ), то SUMZPF отражается 
+       в расчетном периоде.
+       Переход на п.4.
+
+       Если ( nvl(SUMZPF,0) != 0 и nvl(SUMBLF,0) != 0 ), то проверим, является ли
+       начисление зарплаты за предыдущий период сторнировкой в связи с
+       больничным листом.
+       Если SIGN(SUMZPF) = SIGN(SUMBLF) , то SUMZPF отражается в расчетном периоде.
+       
+       Если SIGN(SUMZPF) != SIGN(SUMBLF) , то сумма SUMZP отражается в том периоде,
+       за который была начислена.
+       В текущий период не включается.
+       SUMZPF = 0
+
+    4. SUMZP2 = SUMZP2 + SUMZPF
+       Переход на 2.
+
+    5. SZPL = SUMZP1 + SUMZP2
+
+       Пример 1.
+      ----------
+      Расчетный год = 2012 , расчетный месяц = 11  
+
+      4000.00  FACTMON = 201211 з/пл и отпускные    включается в ноябрь 
+       100.00  FACTMON = 201209 отпускные           не включается в ноябрь (отпускные
+                                                                всегда переставляем)
+       500.00  FACTMON = 201209 з/пл                включается в ноябрь (нет 
+                                                             больничных за сентябрь)
+       300.00  FACTMON = 201210 з/пл                не включается в ноябрь (есть 
+                                                        больничные за октябрь и знаки разные)
+      -100.00  FACTMON = 201210 больничные
+
+       SUMZP1 = 4000.00  , SUMZP2 =  500.00 , SZPL = 4500
+
+
+  --------------------------------------------------------------------------
+
+      SZPLMAX.
+
+            Если fabs( SZPL ) <= SumMax , SZPLMAX = SZPL
+
+            Иначе SZPLMAX = SumMax ,
+                 проверяем : если SZPL < 0 , то SZPLMAX = -SumMax
+
+      SGPD.
+
+            SELECT SUM(SUM)                         
+            FROM   PAYSUM,PAYTBL                    
+            WHERE  MONTH = MONTHR AND
+                   YEAR = YEARR AND
+                   EMP# = EMP AND               
+                   PAYSUM.PAY# < 300 AND            
+                   PAYSUM.PAY# =PAYTBL.PAY# AND     
+                   NVL(BUDGTAX0,' ') ='*'           
+
+     SBOL.
+
+            SELECT SUM(SUM)                         
+            FROM   PAYSUM,PAYTBL                    
+            WHERE  FACTMON = ( YEARR * 100 + MONTHR ) AND
+                   EMP# = EMP AND               
+                   PAYSUM.PAY# < 300 AND            
+                   PAYSUM.PAY# =PAYTBL.PAY# AND     
+                   NVL(BUDGTAX7,' ') ='*'           
+
+     SBLFSS.
+       
+
+            SELECT SUM(SUM)                         
+            FROM   PAYSUM,PAYTBL                    
+            WHERE  FACTMON = ( YEARR * 100 + MONTHR ) AND
+                   EMP# = EMP AND               
+                   PAYSUM.PAY# < 300 AND            
+                   PAYSUM.PAY# =PAYTBL.PAY# AND     
+                   NVL(BUDGTAX9,' ') ='*'           
+
+  -------------------------------------
+
+       С июля 2013 г. проверку  
+
+     NVL(BUDGTAX9,' ') ='*' 
+
+       заменим на :
+
+   (  NVL(BUDGTAX9,' ') ='*' and PAYSUM.PAY# not in (245,246,247) ) OR
+    ( PAYSUM.PAY# in (245,246,247) and  ( YEAR * 100 + MONTH ) >= 201307 and
+      FACTMON >= 201307  )  )
+
+  -------------------------------------
+
+
+ -----------------------------------------------------
+  добавили в феврале 2011 г.
+
+     SBOLM.
+
+            SELECT SUM(SUM)                         
+            FROM   PAYSUM,PAYTBL                    
+            WHERE  YEAR=YEARR AND MONTH=MONTHR AND
+                   EMP# = EMP AND               
+                   PAYSUM.PAY# < 300 AND            
+                   PAYSUM.PAY# =PAYTBL.PAY# AND     
+                   NVL(BUDGTAX7,' ') ='*'           
+
+
+     SBLFSSM.
+   ------------------------
+
+
+            SELECT SUM(SUM)                         
+            FROM   PAYSUM,PAYTBL                    
+            WHERE  YEAR=YEARR AND MONTH=MONTHR AND
+                   EMP# = EMP AND               
+                   PAYSUM.PAY# < 300 AND            
+                   PAYSUM.PAY# =PAYTBL.PAY# AND     
+                   NVL(BUDGTAX9,' ') ='*'           
+
+  -------------------------------------
+
+       С июля 2013 г. проверку  
+
+     NVL(BUDGTAX9,' ') ='*' 
+
+       заменим на :
+
+   (  NVL(BUDGTAX9,' ') ='*' and PAYSUM.PAY# not in (245,246,247) ) OR
+    ( PAYSUM.PAY# in (245,246,247) and  ( YEAR * 100 + MONTH ) >= 201307 and
+      FACTMON >= 201307  )  )
+
+  -------------------------------------
+
+  --------------------------------------------------------------------
+
+     ST_ZPL.
+
+       SELECT SUM(SUM)
+       FROM   PAYSUM
+       WHERE  FACTMON = ( YEARR * 100 + MONTHR ) AND
+	      EMP# = EMP AND
+  	      PAY# in ( 328,430,540   ,  329 ) 
+
+
+     ST_GPD.
+
+       SELECT SUM(SUM)
+       FROM   PAYSUM
+       WHERE  FACTMON = ( YEARR * 100 + MONTHR ) AND
+	      EMP# = EMP AND
+
+   	          PAY# in ( 432,542 )         --  было до августа 2014 г.
+
+   	          PAY# in ( 432,542 , 429 )   --  стало с августа 2014 г.
+ 
+     ST_BL.
+
+       SELECT SUM(SUM)
+       FROM   PAYSUM
+       WHERE  FACTMON = ( YEARR * 100 + MONTHR ) AND
+	      EMP# = EMP AND
+
+    	          PAY# in ( 431,541 )         --  было до августа 2014 г.
+
+    	          PAY# in ( 431,541 , 437 )   --  стало с августа 2014 г.
+
+     ST_BLFSS.
+
+       SELECT SUM(SUM)
+       FROM   PAYSUM
+       WHERE  FACTMON = ( YEARR * 100 + MONTHR ) AND
+	      EMP# = EMP AND
+
+  	      PAY# in ( 632,633 )             --  было до августа 2014 г.
+
+  	      PAY# in ( 632,633 , 438 )       --  стало с августа 2014 г.
+
+     SCOR1.
+
+       Пока не заполняем.
+
+ -----------------------------------
+ сентябрь 2017 г.
+
+ Вычислим облагаемую сумму за расчетный месяц.
+ SOBLAG_RM = SZPl + SBOL + SBLFSS
+
+ Если SOBLAG_RM > 0 и SOBLAG_RM < ZplMin , то вычислим разницу между минимальной
+ зарплатой и облагаемой суммой за расчетный месяц.
+
+ SCOR1 = ZplMin - SOBLAG_RM.
+ Будем записывать SCOR1 в поле SUMCORR1.
+
+ ------------------------------------
+
+
+     SCOR0.
+
+       Пока не заполняем.
+
+     DBUSER
+          
+        Заносим значение из системной даты :
+
+        дд/мм/гггг чч:мм имя пользователя
+
+   ---------------------------------------
+ !! добавили в ноябре 2012 г.
+
+     FLAGCHANGE.
+   ---------------------------------------
+
+
+   3.   Удаляем запись по EMP#, YEARR, MONTHR .
+
+      Выполняем INSERT записи со значениями полей, вычисленных в п.I 2.
+
+
+
+      II. ЗАПОЛНЕНИЕ ТАБЛИЦЫ ПО ПРОШЛЫМ И БУДУЩИМ РАСЧЕТНЫМ МЕСЯЦАМ
+          ОТЧЕТНОГО ГОДА.
+         -----------------------------------------------------------
+
+   Запрос для выборки:
+
+   Запрос 4.
+ 
+            SELECT DISTINCT FACTMON, EMP#                         
+            FROM   PAYSUM,PAYTBL                    
+            WHERE  YEAR = YEARR AND MONTH =  MONTHR  AND
+	           AND EMP# BETWEEN EMPMIN AND EMPMAX AND
+                   FACTMON != ( YEARR * 100 + MONTHR ) AND  /* исключаем расч. м-ц */   
+                                                             
+  	      ( PAYSUM.PAY# < 300      
+                OR PAYSUM.PAY# in ( 328,430,431,432,632,540,541,542,633   ,
+                                  329  , 429 , 437 , 438  ) ) 
+
+       Виды 429, 437, 438  добавили в августе 2014 г.
+
+
+
+                   PAYSUM.PAY# =PAYTBL.PAY# AND     
+                   PAYSUM.PAY# =PAYTBL.PAY# AND
+            ORDER  BY FACTMON,EMP# 
+
+
+   1.  Проходим по каждому выбранному FACTMON .
+       Обозначим :
+       FACTMONR - обрабатываемый FACTMON
+       YEARF    - год, выделенный из FACTMONR   = SUBSTR(FACTMONR,1,4)
+       MONTHF   - месяц, выделенный из FACTMONR = SUBSTR(FACTMONR,5,2)
+
+
+       Для YEARF,MONTHF определим максимальную величину, на которую начисляется
+       удержание в ПФ.  Обозначим ее SumMax.
+
+       Для определения SumMax выбрать значение NVAL из справочника SYSINDEX c
+       IND# = 541 при условии,что 1-е  число  месяца MONTHF года YEARF >=
+       максимально возможного значения  поля INDATE.
+
+   2.  Проходим по каждому таб. номеру EMP#, выбранному в запросе для
+       обрабатывамого FACTMON.
+
+       Обозначим : EMP - обрабатываемый таб.номер.
+
+   3.  Всем необходимым переменным для расчета  (см I, п.1) присвоим значение 0.
+
+       Определим наличие записи в PFTSUMN.
+
+         SELECT *
+         FROM   PFTSUMN
+         WHERE  YEAR = YEARF  AND
+         MONTH =  MONTHF  AND
+         EMP# = EMP 
+
+       Если запись выбралась, то перепишем значения полей
+       из выбранной записи PFTSUMN в переменные :
+
+       FLAGINV    в    FLAG       
+       SUMTAX1    в    SUMT1      
+       SUMZPL     в    SZPL       
+       SUMZPLMAX  в    SZPLMAX    
+       SUMGPD     в    SGPD       
+       SUMBOL     в    SBOL      
+       SUMBLFSS   в    SBLFSS     
+       STAX_ZPL   в    ST_ZPL     
+       STAX_GPD   в    ST_GPD     
+       STAX_BL    в    ST_BL      
+       STAX_BLFSS в    ST_BLFSS   
+       SUMCORR1   в    SCOR1      
+       SUMCORR0   в    SKOR0      
+       STAG       в    STAG     
+  ---------------------------------
+       SUMBOLM    в    SBOLM      
+       SUMBLFSSM  в    SBLFSSM     
+
+ !!    FLAGCHANGE в    FLAGCH
+
+     FLAG.
+
+       Если
+       ( YEARR = YEARF  AND MONTHF < MONTHR ) OR YEARF < YEARR  , 
+       то не меняем флаг инвалидности для прошлых месяцев.
+
+       Для будущих м-цев - по текущему значению в EMPLOY.
+
+            SELECT NVL(INVAL,' ') FROM EMPLOY E
+            WHERE E.EMP# = EMP
+
+            Если NVL(INVAL,' ') = '*'  FLAG = 1 
+
+
+      SZPL.
+
+ ------------------------------------------------------------------------
+ -------------------------
+ ------------------------- Было до ноября 2012 г.
+
+
+  Было до января 2012 г.
+
+
+            SELECT SUM(SUM) в SZPL                        
+            FROM   PAYSUM,PAYTBL                    
+            WHERE  EMP# = EMP AND               
+                   PAYSUM.PAY# < 300 AND            
+                   PAYSUM.PAY# =PAYTBL.PAY# AND     
+                   MONTH = MONTHF AND                      
+                   YEAR = YEARF AND     
+                   NVL(BUDGTAX8,' ') ='*'           
+
+  Стало с января 2012 г.
+  -----------------------
+  Если YEARF < 2012, то   
+
+  выбираем суммы по зарплате, начисленные в том месяце ,который мы формируем,
+  а также зарплату, начисленную начиная с 2012 г. за формируемый месяц .
+
+            SELECT SUM(SUM) в SZPL                        
+            FROM   PAYSUM,PAYTBL                    
+            WHERE  EMP# = EMP AND               
+                   PAYSUM.PAY# < 300 AND            
+                   PAYSUM.PAY# =PAYTBL.PAY# AND     
+                   NVL(BUDGTAX8,' ') ='*' AND (          
+                   ( MONTH = MONTHF AND                      
+                     YEAR = YEARF ) OR (
+                     YEAR > 2011 AND      
+                     FACTMON = ( YEARF * 100 + MONTHF ) )
+                     )
+    Иначе 
+
+  выбираем суммы по зарплате, начисленные за формируемый месяц.
+
+            SELECT SUM(SUM)                         
+            FROM   PAYSUM,PAYTBL                    
+            WHERE  EMP# = EMP AND               
+                   PAYSUM.PAY# < 300 AND            
+                   PAYSUM.PAY# =PAYTBL.PAY# AND     
+                   NVL(BUDGTAX8,' ') ='*' AND 
+                   FACTMON = ( YEARF * 100 + MONTHF ) AND YEAR > 2011
+
+ -------------------------
+ ------------------------- Стало с ноября 2012 г.
+ нн
+  SUMZP1 - сумма зарплаты (в т.ч. отпускные), начисленная в месяце MONTHF года YEARF 
+           за месяц MONTHF, год YEARF ;
+           сумма зарплаты (в т.ч. отпускные),начисленная за месяц MONTHF, год YEARF
+           в других периодах до ноября 2012 г.
+           сумма отпускных, начисленные в других периодах за формируемый месяц, 
+           начиная с ноября 2012 г.  
+
+  SUMZP2 - сумма, пришедшая из других периодов за FACTMONR , а именно :
+           сумма зарплаты (без отпускных), начисленная в расчетном периоде  
+           или в предыдущих периодах начиная с ноября 2012 г.,
+           являющаяся сторнированной из-за больничн. листа.
+           Отражается в отчетности для ПФ в расчетном периоде с датой FACTMONR.
+
+  SUMZP3 - сумма зарплаты (без отпускных), начисленная в месяце MONTHF года YEARF    
+           не за FACTMONR , но оставалась в YEARF, MONTHF. 
+
+
+   Вычислим SUMZP1.
+   -----------------
+   SUMZP1 = 0.
+
+            SELECT SUM(SUM)   into  SUMZP1                        
+            FROM   PAYSUM,PAYTBL                    
+            WHERE  EMP# = EMP AND               
+                   PAYSUM.PAY# < 300 AND            
+                   PAYSUM.PAY# =PAYTBL.PAY# AND     
+                   NVL(BUDGTAX8,' ') ='*' AND
+                   FACTMON =FACTMONR AND  (
+
+      1. ( MONTH = MONTHF AND                      
+           YEAR = YEARF ) OR
+
+      2. ( ( YEAR * 100 + MONTH ) < 201211 AND
+         ( YEAR * 100 + MONTH ) != FACTMONR  ) OR 
+
+      3. ( ( YEAR * 100 + MONTH ) >= 201211 AND 
+         ( YEAR * 100 + MONTH ) != FACTMONR  AND
+           PAYSUM.PAY# IN
+               ( SELECT TBL# FROM SYSTBL WHERE TBLID ='PF_T7_K3' ) )    
+                                                )
+   Вычислим SUMZP2.
+   ----------------
+   SUMZP2 = 0.
+
+   Начиная с ноября 2012 г. зарплата (без отпускных), начисленная в расчетном
+   периоде за другой период , либо переставлялась в тот период, либо оставалась
+   в расчетном периоде.
+   Проверим, оставалась ли сумма с FACTMONR, начисленная во всех месяцах, начиная 
+   с ноября 2012 г. и включительно до текущего расчетного периода, в этих месяцах,
+   или переставлялась в YEARF, MONTHF.
+
+   Обозначим: 
+   RPK =  (YEARR * 100 + MONTHR) - конечный период.
+   RPT -  текущий период (начиная с 201211).
+   YEAR_T  - год, выделенный из обрабатываемого периода RPT.
+   MONTH_T - месяц, выделенный из периода RPT.
+
+   Не надо учитывать период, совпадающий с FACTMONR. 
+   Например, если расчетный период - январь 2013 г., а FACTMONR = 201212 , то
+   пропускаем период YEAR_T = 2012, MONTH_T = 12.
+
+   Вычислим RPT.
+        MONTH_T = 0
+        YEAR_T = 2012
+
+  mes   MONTH_T = MONTH_T + 1
+        Если MONTH_T = 13 , то  MONTH_T = 1 , YEAR_T = YEAR_T + 1 и переход на period.
+        Иначе 
+ period   RPT = (YEAR_T * 100 + MONTH_T ) 
+
+          Если RPT < 201211   , то переход на mes
+          Если RPT = FACTMONR , то переход на mes
+          Иначе 
+          Если RPT > RPK , то переход на вычисление SUMZP3.
+             Иначе 
+
+     Обозначим :
+     SUMZPF  - зарплата (кроме отпускных) по FACTMONR, начисленная в периоде RPT.
+     SUMBLF  - больничные по FACTMONR, начисленные в периоде RPT.
+
+     Начальные значения SUMZPF = 0 , SUMBLF = 0.
+
+  Запрос 5.
+       SELECT SUM(SUM) into SUMZPF 
+       FROM   MANSUM , PAYTBL
+       WHERE  EMP# = EMP AND
+              MONTH = MONTH_T AND
+	      YEAR  = YEAR_T  AND
+	      FACTMON = FACTMONR AND
+  	      MANSUM.PAY# < 300 AND
+  	      MANSUM.PAY# = PAYTBL.PAY# AND
+  	      NVL(BUDGTAX8,' ') ='*' AND
+              MANSUM.PAY# NOT IN
+                  ( SELECT TBL# FROM SYSTBL WHERE TBLID ='PF_T7_K3' )     
+  Запрос 6.
+       SELECT SUM(SUM) into SUMBLF 
+       FROM   PAYSUM , PAYTBL
+       WHERE  EMP# = EMP AND 
+              MONTH = MONTH_T AND
+	      YEAR  = YEAR_T  AND
+	      FACTMON = FACTMONR AND
+  	      PAYSUM.PAY# = PAYTBL.PAY# AND
+  	      ( NVL(BUDGTAX7,' ') ='*' OR NVL(BUDGTAX9,' ') ='*' ) 
+
+  -------------------------------------
+
+       С июля 2013 г. проверку  
+
+    (  NVL(BUDGTAX7,' ') ='*' or NVL(BUDGTAX9,' ') ='*' )
+
+       заменим на :
+
+   (   NVL(BUDGTAX7,' ') ='*' or
+    ( NVL(BUDGTAX9,' ') ='*' and PAYSUM.PAY# not in (245,246,247) ) OR
+    ( PAYSUM.PAY# in (245,246,247) and  ( YEAR * 100 + MONTH ) >= 201307 and
+      FACTMON >= 201307  )  )
+
+  -------------------------------------
+
+
+       Если ( nvl(SUMZPF,0) = 0 или nvl(SUMBLF,0) = 0 ), то сумма SUMZPF включалась
+       в период RPT.  
+       SUMZPF = 0
+       Переход на summ2.
+
+       Если ( nvl(SUMZPF,0) != 0 и nvl(SUMBLF,0) != 0 ), то проверим, является ли
+       начисление зарплаты за предыдущий период сторнировкой в связи с
+       больничным листом.
+       Если SIGN(SUMZPF) = SIGN(SUMBLF) , то сумма SUMZPF включалась в период RPT.
+       SUMZPF = 0
+       Переход на summ2.
+       
+       Если SIGN(SUMZPF) != SIGN(SUMBLF) , то сумма SUMZPF переставляется в YEARF,
+       MONTHF.
+
+ summ2 SUMZP2 = SUMZP2 + SUMZPF
+       Переход на mes.
+
+
+   Вычислим SUMZP3.
+   ----------------
+   SUMZP3 = 0.
+   Если FACTMONR < 201211 , то переход на szpl.
+   Иначе 
+   Выберем все FACTMON по зарплате, отличные от FACTMONR , начисленные в YEARF , MONTHF.
+
+   Запрос 7.
+       SELECT FACTMON,SUM(SUM)  
+       FROM   MANSUM , PAYTBL
+       WHERE  EMP# = EMP AND
+              MONTH = MONTHF AND
+	      YEAR  = YEARF  AND
+	      FACTMON != FACTMONR AND
+  	      MANSUM.PAY# < 300 AND
+  	      MANSUM.PAY# = PAYTBL.PAY# AND
+  	      NVL(BUDGTAX8,' ') ='*' AND
+              MANSUM.PAY# NOT IN
+                  ( SELECT TBL# FROM SYSTBL WHERE TBLID ='PF_T7_K3' )     
+
+  factmon Пройдем по каждому из FACTMON, выбранных в запросе 7. 
+          Если пройден список всех FACTMON, то переход на szpl.
+          Иначе
+
+     Обозначим :
+     SUMZPF  - зарплата для обрабатываемого FACTMON, выбранная в запросе 7.
+     SUMBLF  - больничные по обрабатываемому FACTMON.
+
+     Начальное значение SUMBLF = 0.
+
+  Запрос 8.
+       SELECT SUM(SUM) into SUMBLF 
+       FROM   PAYSUM , PAYTBL
+       WHERE  EMP# = EMP AND 
+              MONTH = MONTHF AND
+	      YEAR  = YEARF  AND
+	      FACTMON = обрабатываемый FACTMON AND
+  	      PAYSUM.PAY# = PAYTBL.PAY# AND
+  	      ( NVL(BUDGTAX7,' ') ='*' OR NVL(BUDGTAX9,' ') ='*' ) 
+
+  -------------------------------------
+
+       С июля 2013 г. проверку  
+
+    (  NVL(BUDGTAX7,' ') ='*' or NVL(BUDGTAX9,' ') ='*' )
+
+       заменим на :
+
+   (   NVL(BUDGTAX7,' ') ='*' or
+    ( NVL(BUDGTAX9,' ') ='*' and PAYSUM.PAY# not in (245,246,247) ) OR
+    ( PAYSUM.PAY# in (245,246,247) and  ( YEAR * 100 + MONTH ) >= 201307 and
+      FACTMON >= 201307  )  )
+
+  -------------------------------------
+
+
+       Если ( nvl(SUMZPF,0) = 0 или nvl(SUMBLF,0) = 0 ), то сумма SUMZPF отражалась 
+       в YEARF, MONTHF.
+       Переход на summ3.
+
+       Если ( nvl(SUMZPF,0) != 0 и nvl(SUMBLF,0) != 0 ), то проверим, является ли
+       начисление зарплаты за предыдущий период сторнировкой в связи с
+       больничным листом.
+       Если SIGN(SUMZPF) = SIGN(SUMBLF) , то сумма SUMZPF включалась в период YEARF, MONTHF.
+       Переход на summ3.
+       
+       Если SIGN(SUMZPF) != SIGN(SUMBLF) , то сумма SUMZPF включалась в период из 
+       обрабатываемого FACTMON. В YEARF, MONTHF не включается.
+       SUMZPF = 0
+
+ summ3 SUMZP3 = SUMZP3 + SUMZPF
+       Переход на factmon.
+
+
+ szpl  SZPL = SUMZP1 + SUMZP2 + SUMZP3
+
+ -------------------------
+ ------------------------- 
+      Пример 2.
+
+ 1)   Расчетный год = 2013 , расчетный месяц = 1  
+
+      4000.00  FACTMON = 201301 з/пл и отпускные  
+       100.00  FACTMON = 201209 отпускные         
+       500.00  FACTMON = 201209 з/пл              
+       300.00  FACTMON = 201210 з/пл              
+       150.00  FACTMON = 201210 больничные
+
+  2)  Расчетный год = 2012 , расчетный месяц = 12  
+
+      4200.00  FACTMON = 201212 з/пл   
+        20.00  FACTMON = 201209 отпускные         
+        30.00  FACTMON = 201209 з/пл              
+       200.00  FACTMON = 201210 з/пл              
+      -100.00  FACTMON = 201210 больничные
+
+  3)  Расчетный год = 2012 , расчетный месяц = 11  
+
+      3000.00  FACTMON = 201211 з/пл и отпускные  
+        70.00  FACTMON = 201209 отпускные         
+        80.00  FACTMON = 201209 з/пл              
+       300.00  FACTMON = 201210 з/пл              
+      -100.00  FACTMON = 201210 больничные
+
+
+  4)  Расчетный год = 2012 , расчетный месяц = 10  
+      2500.00  FACTMON = 201210 з/пл   
+
+  5)  Расчетный год = 2012 , расчетный месяц = 9  
+      2000.00  FACTMON = 201209 з/пл   
+
+      В январе 2013 г. Формируем SZPL за сентябрь 2012 г. и октябрь 2012 г.
+
+      SZPL за сентябрь 2011 г. =
+           =  2000.00(из сент.) + 70.00(из нояб.) + 20.00(из дек.) + 100.00(из янв.) 
+
+      SZPL за октябрь 2011 г.  = 
+           =  2500.00(из окт.) + 300.00(из нояб.) + 200.00(из дек.) 
+
+
+  --------------------------------------------------------------------------
+
+      SZPLMAX.
+
+            Если fabs( SZPL ) <= SumMax , SZPLMAX = SZPL
+            Иначе SZPLMAX = SumMax 
+
+                  Если SZPL < 0 , то SZPLMAX = -SumMax
+
+     SBOL.
+
+            SELECT SUM(SUM)                         
+            FROM   PAYSUM,PAYTBL                    
+            WHERE  FACTMON = FACTNONR 
+                   EMP# = EMP AND               
+                   PAYSUM.PAY# < 300 AND            
+                   PAYSUM.PAY# =PAYTBL.PAY# AND     
+                   NVL(BUDGTAX7,' ') ='*'           
+
+     SBLFSS.
+       
+            SELECT SUM(SUM)                         
+            FROM   PAYSUM,PAYTBL                    
+            WHERE  FACTMON = FACTMONR AND
+                   EMP# = EMP AND               
+                   PAYSUM.PAY# < 300 AND            
+                   PAYSUM.PAY# =PAYTBL.PAY# AND     
+                   NVL(BUDGTAX9,' ') ='*'           
+
+  -------------------------------------
+
+       С июля 2013 г. проверку  
+
+     NVL(BUDGTAX9,' ') ='*' 
+
+       заменим на :
+
+   ( ( NVL(BUDGTAX9,' ') ='*' and PAYSUM.PAY# not in (245,246,247) ) OR
+     ( PAYSUM.PAY# in (245,246,247) and  ( YEAR * 100 + MONTH ) >= 201307 and
+       FACTMON >= 201307  )  )
+ 
+  -------------------------------------
+
+
+
+     ST_ZPL.
+
+       SELECT SUM(SUM)
+       FROM   PAYSUM
+       WHERE  FACTMON = FACTMONR  AND
+	      EMP# = EMP AND
+  	      PAY# in ( 328,430,540     , 329 ) 
+
+     ST_BL.
+
+       SELECT SUM(SUM)
+       FROM   PAYSUM
+       WHERE  FACTMON = FACTMONR AND
+	      EMP# = EMP AND
+
+  	      PAY# in ( 431,541 )              -- было до августа 2014 г.
+
+  	      PAY# in ( 431,541 , 437 )        -- стало с августа 2014 г.
+
+     ST_BLFSS.
+
+       SELECT SUM(SUM)
+       FROM   PAYSUM
+       WHERE  FACTMON = FACTMONR AND
+	      EMP# = EMP AND
+
+  	      PAY# in ( 632,633 )             -- было до августа 2014 г. 
+
+  	      PAY# in ( 632,633 , 438 )       -- стало с августа 2014 г. 
+
+
+ -----------------------------------
+ сентябрь 2017 г.
+
+ Вычислим облагаемую сумму за расчетный месяц.
+ SOBLAG_RM = SZPl + SBOL + SBLFSS
+
+ Если SOBLAG_RM > 0 и SOBLAG_RM < ZplMin , то вычислим разницу между минимальной
+ зарплатой и облагаемой суммой за расчетный месяц.
+
+ SCOR1 = ZplMin - SOBLAG_RM.
+ Будем записывать SCOR1 в поле SUMCORR1.
+
+ ------------------------------------
+
+    DBUSER
+          
+        Заносим значение из системной даты :
+
+        дд/мм/гггг чч:мм имя пользователя
+
+    Если 
+    ( SZPL != SUMZPL OR SGPD != SUMGPD OR SBOL != SUMBOL OR SBLFSS != SUMBLFSS ), 
+
+    то FLAGCHANGE = 1
+
+
+   4.   Удаляем запись по EMP#, YEARF, MONTHF .
+
+      Выполняем INSERT записи со значениями полей, вычисленных в п.II 3.
+
